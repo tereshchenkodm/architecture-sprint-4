@@ -1,0 +1,36 @@
+@startuml
+actor User
+participant "MES System" as MES
+participant "Cache" as Cache
+participant "Database" as DB
+participant "RabbitMQ" as Broker
+
+== Reading Data (e.g., Order List) ==
+User -> MES : Request order list
+MES -> Cache : Check if order list exists
+alt Cache Hit
+    Cache --> MES : Return order list
+else Cache Miss
+    MES -> DB : Fetch order list
+    DB --> MES : Return order list
+    MES -> Cache : Write order list to cache
+    Cache --> MES : Acknowledge
+end
+MES --> User : Return order list
+
+== Updating Data (e.g., Order Status) ==
+User -> MES : Update order status
+MES -> Cache : Update cache with new status
+Cache --> MES : Acknowledge update
+MES -> DB : Update order status in database
+DB --> MES : Acknowledge update
+MES --> User : Confirm update
+
+== Order Updated from RabbitMQ ==
+Broker -> MES : Order status update event
+MES -> Cache : Update cache with new status
+Cache --> MES : Acknowledge update
+MES -> DB : Update order status in database
+DB --> MES : Acknowledge update
+
+@enduml

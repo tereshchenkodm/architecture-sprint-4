@@ -1,0 +1,29 @@
+@startuml
+actor User
+actor "DevOps / Support" as DevOps
+
+== Online Store Interaction ==
+User -> "Online Store" : Modify order status / View errors
+"Online Store" -> Fluentd : Log INFO / ERROR
+
+== MES System Interaction ==
+User -> "MES System" : Modify status
+"MES System" -> Fluentd : Log INFO / ERROR
+
+== CRM System Interaction ==
+User -> CRM : Synchronize orders
+CRM -> Fluentd : Log INFO
+
+== RabbitMQ Logging ==
+"RabbitMQ" -> Fluentd : Log unprocessed messages (WARNING)
+
+== Log Aggregation ==
+Fluentd -> Filebeat : Aggregate logs
+Filebeat -> "ELK Stack" : Analyze logs
+
+== Monitoring ==
+DevOps -> Keycloak : Manage authorization
+DevOps -> "ELK Stack" : Analyze errors
+"ELK Stack" -> PagerDuty : Notify critical errors
+RateLimiter -> "ELK Stack" : Track DDoS protection
+@enduml
