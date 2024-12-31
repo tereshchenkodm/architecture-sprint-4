@@ -1,0 +1,46 @@
+@startuml
+actor Client
+actor "Admin/DevOps" as AdminDev
+
+== Online Store Interaction ==
+Client -> "Online Frontend" : Create order / upload 3D model
+"Online Frontend" -> "Online Backend" : HTTP Request
+"Online Backend" -> "Online DB" : Save order details
+"Online Backend" -> "S3 Storage" : Upload 3D file
+"Online Backend" -> "RabbitMQ" : Publish order event (SUBMITTED)
+
+== MES System Interaction ==
+"RabbitMQ" -> "MES Backend" : Process event (SUBMITTED)
+"MES Backend" -> "MES DB" : Calculate price\nUpdate order status (PRICE_CALCULATED)
+"MES Backend" --> "RabbitMQ" : Publish event (MANUFACTURING_STARTED)
+
+Client -> "MES Frontend" : Order status & manufacturing
+"MES Frontend" -> "MES Backend" : Fetch status, update order
+
+== CRM System Interaction ==
+"RabbitMQ" -> "CRM Backend" : Process event (MANUFACTURING_APPROVED)
+"CRM Backend" -> "CRM DB" : Update status (CLOSED)
+
+== Monitoring & Tracing ==
+note right of "Online Backend"
+  Emits tracing data\n(traceID, spanID)
+end note
+note right of "MES Backend"
+  Emits tracing data and metrics
+end note
+note right of "CRM Backend"
+  Emits tracing data and logs
+end note
+
+"Online Backend" -> "OpenTelemetry" : Send trace data
+"MES Backend" -> "OpenTelemetry" : Send trace data
+"CRM Backend" -> "OpenTelemetry" : Send trace data
+
+"OpenTelemetry" -> "Jaeger/Zipkin" : Forward traces
+"OpenTelemetry" -> "ELK" : Forward logs
+
+== Log & Trace Analysis ==
+AdminDev -> "Jaeger/Zipkin" : Trace analysis
+AdminDev -> "ELK" : Log analysis
+
+@enduml
